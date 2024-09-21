@@ -10,7 +10,7 @@ exports.createProfile = async (req, res) => {
       address,
       dateOfBirth,
       dlNumber,
-    } = req.bdy;
+    } = req.body;
 
     try {
       // Check if user already exists
