@@ -17,7 +17,7 @@ const createProfileSchema = new mongoose.Schema(
     },
         additionalVehicleNumbers: {
             type: String,
-            required: true, unique: true
+            unique: true
         }, 
     phoneNumber: {
       type: String,
