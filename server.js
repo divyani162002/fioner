@@ -4,6 +4,7 @@ const passport = require("passport");
 const session = require("express-session");
 const bodyParser = require("body-parser");
 const app = express();
+require("./controller/cronJob"); 
 require("dotenv").config();
 const { errorHandler, notFound } = require("./middleware/errHandler");
 

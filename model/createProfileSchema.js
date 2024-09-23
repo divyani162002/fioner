@@ -2,23 +2,23 @@ const mongoose = require("mongoose");
 
 const createProfileSchema = new mongoose.Schema(
   {
-      name: {
-        type: String,
-        required: true,
-      },
-      email: {
-        type: String,
-        required: true,
-      },
+    name: {
+      type: String,
+      required: true,
+    },
+    email: {
+      type: String,
+      required: true,
+    },
     vehicleNumber: {
       type: String,
       required: true,
       unique: true, // Assuming each vehicle number is unique
     },
-        additionalVehicleNumbers: {
-            type: String,
-            unique: true
-        }, 
+    additionalVehicleNumbers: {
+      type: String,
+      unique: true,
+    },
     phoneNumber: {
       type: String,
       required: true,
@@ -38,6 +38,16 @@ const createProfileSchema = new mongoose.Schema(
     createdAt: {
       type: Date,
       default: Date.now,
+    },
+    subscriptionStatus: {
+      type: String, // 'active', 'expired', 'pending'
+      default: "pending",
+    },
+    subscriptionEndDate: Date,
+    qrCode: String, // URL to the QR code
+    qrCodeActive: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

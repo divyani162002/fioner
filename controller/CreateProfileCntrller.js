@@ -1,4 +1,7 @@
 const CreateProfile = require("../model/createProfileSchema")
+const Razorpay = require("razorpay");
+const QRCode = require("qrcode");
+const nodemailer = require("nodemailer");
 
 exports.createProfile = async (req, res) => {
     const {
@@ -159,5 +162,100 @@ exports.updateProfile = async (req, res) => {
   } catch (error) {
     console.error(error); // Log the error for debugging
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
+// Setup Razorpay instance
+const razorpay = new Razorpay({
+  key_id: process.env.RAZORPAY_KEY_ID,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
+});
+
+// Handle payment and QR code generation
+exports.handlePaymentSuccess = async (req, res) => {
+  const { razorpayPaymentId, userId } = req.body;
+
+  try {
+    // Verify payment with Razorpay
+    const payment = await razorpay.payments.fetch(razorpayPaymentId);
+    if (!payment || payment.status !== "captured") {
+      return res.status(400).json({ message: "Payment verification failed" });
+    }
+
+    // Find the user and update their subscription status
+    const user = await CreateProfile.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate a QR code for the user
+    const qrData = JSON.stringify({
+      vehicleNo: user.vehicleNo,
+      mobileNo: user.mobileNo,
+    });
+
+    const qrCodeUrl = await QRCode.toDataURL(qrData);
+
+    // Update the user's subscription and QR code details
+    user.qrCode = qrCodeUrl;
+    user.qrCodeActive = true;
+    user.subscriptionStatus = "active";
+    user.subscriptionEndDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days subscription
+    await user.save();
+
+    res.status(200).json({
+      message: "Subscription successful, QR code generated",
+      qrCodeUrl: qrCodeUrl,
+    });
+  } catch (error) {
+    console.error("Error handling payment", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.qrCodeScanHandler = async (req, res) => {
+  const { userId } = req.body; // Extract user ID from the scanned QR code data
+
+  try {
+    const user = await User.findById(userId);
+
+    if (!user || !user.qrCodeActive) {
+      return res
+        .status(403)
+        .json({
+          message: "QR code is inactive. Please renew your subscription.",
+        });
+    }
+
+    // Proceed with forwarding the details to the service team
+    // Email or notify the service team with user details
+    const transporter = nodemailer.createTransport({
+      service: "Gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: process.env.SERVICE_TEAM_EMAIL,
+      subject: "QR Code Scan: Vehicle Service Request",
+      text: `Vehicle No: ${user.vehicleNo}\nMobile No: ${user.mobileNo}`,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res
+      .status(200)
+      .json({
+        message: "QR code is valid. Details forwarded to the service team.",
+      });
+  } catch (error) {
+    console.error("Error handling QR scan", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
