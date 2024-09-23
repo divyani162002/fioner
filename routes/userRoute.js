@@ -8,7 +8,7 @@ const {
   deleteUser,
   forgotPassword,
   resetPassword,
-  
+  verifyOTP,
 } = require("../controller/userController");
 
 
@@ -18,6 +18,7 @@ const router = express.Router();
 
 // Signup route
 router.post("/signup", registerUser);
+router.post("/verify-otp", verifyOTP);
 
 // Login route
 router.post("/login", loginUser);
@@ -32,6 +33,7 @@ router.put('/reset-password/:token', resetPassword);
 
 //admin
 router.get("/admin/all", protect, admin, getAllUsers);
+
 router.put("/admin/user/:id", protect, admin, updateUser);
 router.delete("/admin/user/:id", protect, admin, deleteUser);
 
