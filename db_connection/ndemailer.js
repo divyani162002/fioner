@@ -2,6 +2,7 @@
 const nodemailer = require("nodemailer");
 
 const sendEmail = async (options) => {
+  console.log("Sending email to:", options.to); // Log the recipient email
   const transporter = nodemailer.createTransport({
     service: "Gmail",
     auth: {

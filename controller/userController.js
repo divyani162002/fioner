@@ -2,6 +2,7 @@ const User = require("../model/userSchema");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendEmail = require("../db_connection/ndemailer");
+const otpGenerator = require("otp-generator");
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -23,6 +24,7 @@ exports.registerUser = async (req, res) => {
     if (userExists) {
       return res.status(400).json({ message: "User already exists" });
     }
+
     // Generate an OTP for email verification
     const otp = otpGenerator.generate(6, {
       digits: true,
@@ -30,29 +32,33 @@ exports.registerUser = async (req, res) => {
       upperCase: false,
       specialChars: false,
     });
-
     // Create a new user
     const user = new User({
       name,
       email,
       password,
       otp,
-      otpExpires: Date.now() + 3600000,
-    }); // OTP valid for 1 hour });
-    user.save();
+      otpExpires: Date.now() + 3600000, // OTP valid for 1 hour
+    });
 
-    // Send OTP to the user's email
-    await sendEmail(user.email, otp);
+    await user.save(); // Make sure to await the save operation
+
+    await sendEmail({
+      to: user.email,
+      subject: "Email Verification OTP",
+      text: `Your OTP for verification is: ${otp}`,
+    });
     // Return success with JWT
     return res.status(201).json({
       _id: user._id,
       name: user.name,
       email: user.email,
       token: generateToken(user._id),
-      message: "User registered successfully. Please verify your email using the OTP sent.",
+      message:
+        "User registered successfully. Please verify your email using the OTP sent.",
     });
-     
   } catch (error) {
+    console.error("Error during signup:", error); // Log detailed error
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -76,6 +82,7 @@ exports.verifyOTP = async (req, res) => {
     // OTP is correct, so clear the OTP fields and activate the user
     user.otp = undefined;
     user.otpExpires = undefined;
+    user.isActive = true; // You might want to add an isActive field to your user model
     await user.save();
 
     // Return success with JWT
@@ -84,7 +91,10 @@ exports.verifyOTP = async (req, res) => {
       token: generateToken(user._id),
     });
   } catch (error) {
-    res.status(500).json({ message: "Server error", error: error.message });
+    console.error("Error during OTP verification:", error); // Log the error for debugging
+    return res
+      .status(500)
+      .json({ message: "Server error", error: error.message });
   }
 };
 

@@ -3,9 +3,15 @@ const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+
+    
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  otp: { type: String },
+  otpExpires: { type: Date },
+  isActive: { type: Boolean, default: false }, // Optional: to track active user
+   
     isAdmin: { type: Boolean, default: false },
     googleId: {
       type: String,
@@ -19,8 +25,7 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
-    otp: { type: String },
-    otpExpires: { type: Date },
+   
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },
