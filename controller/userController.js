@@ -2,7 +2,7 @@ const User = require("../model/userSchema");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const sendEmail = require("../db_connection/ndemailer");
-const otpGenerator = require("otp-generator");
+// const otpGenerator = require("otp-generator");
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -25,13 +25,16 @@ exports.registerUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    // Generate an OTP for email verification
-    const otp = otpGenerator.generate(6, {
-      digits: true,
-      alphabets: false,
-      upperCase: false,
-      specialChars: false,
-    });
+    // // Generate an OTP for email verification
+    // const otp = otpGenerator.generate(6, {
+    //   digits: true,
+    //   alphabets: false,
+    //   upperCase: false,
+    //   specialChars: false,
+    // });
+    
+const otp = Math.floor(100000 + Math.random() * 900000); // Generates a 6-digit number
+console.log(otp);
     // Create a new user
     const user = new User({
       name,
