@@ -10,7 +10,7 @@ const createProfileSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    vehicleNumber: {
+    reg_no: {
       type: String,
       required: true,
       unique: true, // Assuming each vehicle number is unique

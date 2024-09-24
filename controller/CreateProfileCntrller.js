@@ -2,67 +2,68 @@ const CreateProfile = require("../model/createProfileSchema")
 const Razorpay = require("razorpay");
 const QRCode = require("qrcode");
 const nodemailer = require("nodemailer");
+// const { checkRtoDetails } = require("../db_connection/rtoService");
 
-exports.createProfile = async (req, res) => {
-    const {
-      name,
-      email,
-      vehicleNumber,
-      additionalVehicleNumbers,
-      phoneNumber,
-      address,
-      dateOfBirth,
-      dlNumber,
-    } = req.body;
+// exports.createProfile = async (req, res) => {
+//     const {
+//       name,
+//       email,
+//       vehicleNumber,
+//       additionalVehicleNumbers,
+//       phoneNumber,
+//       address,
+//       dateOfBirth,
+//       dlNumber,
+//     } = req.body;
 
-    try {
-      // Check if user already exists
-      const userExists = await CreateProfile.findOne({ email });
-      if (userExists) {
-        return res.status(400).json({ message: "User already exists" });
-      }
+//     try {
+//       // Check if user already exists
+//       const userExists = await CreateProfile.findOne({ email });
+//       if (userExists) {
+//         return res.status(400).json({ message: "User already exists" });
+//       }
 
-      // Regular expression to match the DD/MM/YYYY format
-      const datePattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
-      const match = dateOfBirth.match(datePattern);
+//       // Regular expression to match the DD/MM/YYYY format
+//       const datePattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+//       const match = dateOfBirth.match(datePattern);
 
-      if (!match) {
-        throw new Error("Invalid date format. Please use DD/MM/YYYY.");
-      }
+//       if (!match) {
+//         throw new Error("Invalid date format. Please use DD/MM/YYYY.");
+//       }
 
-      // Extract the parts of the date
-      const day = parseInt(match[1], 10);
-      const month = parseInt(match[2], 10) - 1; // Month is zero-indexed in JS (0 = January)
-      const year = parseInt(match[3], 10);
+//       // Extract the parts of the date
+//       const day = parseInt(match[1], 10);
+//       const month = parseInt(match[2], 10) - 1; // Month is zero-indexed in JS (0 = January)
+//       const year = parseInt(match[3], 10);
 
-      // Create a valid JavaScript Date object (using Date.UTC to avoid timezone issues)
-      const formattedDate = new Date(Date.UTC(year, month, day));
+//       // Create a valid JavaScript Date object (using Date.UTC to avoid timezone issues)
+//       const formattedDate = new Date(Date.UTC(year, month, day));
 
-      // Check if the date is valid
-      if (isNaN(formattedDate.getTime())) {
-        throw new Error("Invalid date value.");
-      }
+//       // Check if the date is valid
+//       if (isNaN(formattedDate.getTime())) {
+//         throw new Error("Invalid date value.");
+//       }
 
-      const newprofile = new CreateProfile({
-        name,
-        email,
-        vehicleNumber,
-        additionalVehicleNumbers,
-        phoneNumber,
-        address,
-        dateOfBirth: formattedDate,
-        dlNumber,
-      });
-      newprofile.save();
-      return res.status(201).json({
-        newprofile,
-      });
-    } catch (error) {
-        console.error(error); // Log the actual error
-        res.status(500).json({ message: "user nt created", error: error.message });
-    }
+//       const newprofile = new CreateProfile({
+//         name,
+//         email,
+//         vehicleNumber,
+//         additionalVehicleNumbers,
+//         phoneNumber,
+//         address,
+//         dateOfBirth: formattedDate,
+//         dlNumber,
+//       });
+//       newprofile.save();
+//       return res.status(201).json({
+//         newprofile,
+//       });
+//     } catch (error) {
+//         console.error(error); // Log the actual error
+//         res.status(500).json({ message: "user nt created", error: error.message });
+//     }
     
-}
+// }
 
 exports.getProfiles = async (req, res)=>{
     try {
@@ -259,3 +260,150 @@ exports.qrCodeScanHandler = async (req, res) => {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
+
+
+
+
+
+
+exports.createProfile = async (req, res) => {
+  const {
+    name,
+    email,
+    reg_no,
+    additionalVehicleNumbers,
+    phoneNumber,
+    address,
+    dateOfBirth,
+    dlNumber,
+  } = req.body;
+
+  try {
+    // Check if user already exists
+    const userExists = await CreateProfile.findOne({ email });
+    if (userExists) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    // Check if vehicleNumber is present
+    if (!reg_no) {
+      return res.status(400).json({ message: "Vehicle number is required" });
+    }
+
+    // Call RTO API to validate the vehicle details
+    let rtoValidation;
+    try {
+      rtoValidation = await checkRtoDetails(reg_no);
+      console.log(rtoValidation);
+    } catch (error) {
+      console.error("Error validating vehicle details:", {
+        status: error.response?.status,
+        data: error.response?.data,
+        message: error.message,
+      });
+      return res.status(400).json({
+        isValid: false,
+        message:
+          error.response?.data?.message ||
+          "Failed to validate vehicle details with RTO",
+      });
+    }
+
+    // If RTO validation fails
+    if (!rtoValidation.isValid) {
+      return res.status(400).json({
+        message: rtoValidation.message || "RTO validation failed",
+      });
+    }
+
+    // Validate dateOfBirth format (DD/MM/YYYY)
+    const datePattern = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+    const match = dateOfBirth.match(datePattern);
+
+    if (!match) {
+      return res.status(400).json({
+        message: "Invalid date format. Please use DD/MM/YYYY.",
+      });
+    }
+
+    // Extract day, month, year and create a JavaScript Date object
+    const day = parseInt(match[1], 10);
+    const month = parseInt(match[2], 10) - 1; // Month is zero-indexed
+    const year = parseInt(match[3], 10);
+    const formattedDate = new Date(Date.UTC(year, month, day));
+
+    if (isNaN(formattedDate.getTime())) {
+      return res.status(400).json({ message: "Invalid date value." });
+    }
+
+    // Create and save the profile if all validations pass
+    const profile = new CreateProfile({
+      name,
+      email,
+      reg_no,
+      additionalVehicleNumbers,
+      phoneNumber,
+      address,
+      dateOfBirth: formattedDate, // Store the formatted Date object
+      dlNumber,
+    });
+
+    await profile.save();
+
+    res.status(201).json({
+      message: "Profile created successfully",
+      profile,
+    });
+  } catch (error) {
+    console.error("Error creating profile:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+const axios = require("axios");
+require("dotenv").config();
+
+const checkRtoDetails = async (reg_no) => {
+  try {
+        // Make a request to the RTO API
+        const response = await axios.post(
+          `https://rto-vehicle-information-verification-india.p.rapidapi.com/api/v1/rc/vehicleinfo`,
+          {
+            headers: {
+              "x-rapidapi-key":
+                "d2ec2c254amsh7d2d428d3d99948p15304djsn3d430c383822",
+              "x-rapidapi-host":
+                "rto-vehicle-information-verification-india.p.rapidapi.com",
+              "Content-Type": "application/json",
+            },
+            body: {
+              reg_no: reg_no,
+              consent: "Y",
+              consent_text:
+                "I hear by declare my consent agreement for fetching my information via AITAN Labs API",
+            },
+          }
+        );
+        console.log(response);
+        if (response.data && response.data.status === "success") {
+            console.log()
+            return { isValid: true };
+        } else {
+            return { isValid: false, message: "Vehicle not found or invalid" };
+        }
+  } catch (error) {
+    console.error(
+      "Error validating vehicle details:",
+      error.response ? error.response.data : error.message
+    );
+    return {
+      isValid: false,
+      message:
+        error.response?.data?.message ||
+        "Failed to validate vehicle details with RTO",
+    };
+  }
+};
+
+
+

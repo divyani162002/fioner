@@ -9,9 +9,12 @@ const {
   updateProfile,
   handlePaymentSuccess,
   qrCodeScanHandler,
+  // checkRtoDetails,
 } = require("../controller/CreateProfileCntrller");
 
 router.post("/", createProfile)
+// router.post("/", checkRtoDetails);
+
 router.get("/", getProfiles)
 router.get("/:id", getProfile)
 router.put("/update/:id", updateProfile)
